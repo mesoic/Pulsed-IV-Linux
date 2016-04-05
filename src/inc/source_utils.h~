@@ -1,0 +1,8 @@
+// DEFAULTS 
+int sourceDefaults(int ud);
+
+// BIAS CONTROL 
+int sourceBias(int ud, char *var); 
+int sourceComp(int ud, char *var);
+int sourceON(int ud);
+int sourceOFF(int ud);

@@ -1,0 +1,51 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "gpib/ib.h"
+#include "gpib_io.h"
+#include "pulse_utils.h"
+
+int pulseOFF(int ud){ 
+  _write(ud, "D1");
+}
+
+int pulseON(int ud){ 
+  _write(ud, "D0");
+}
+
+int pulseWidth(int ud, char* var){
+  char cmd[32]; 
+  strcpy(cmd, "WID ");
+  strcat(cmd, var);
+  strcat(cmd, "us"); 
+  _write(ud, cmd); 
+  return 0; 
+}
+
+int pulsePeriod(int ud, char* var){ 
+  char cmd[32]; 
+  strcpy(cmd, "PER ");
+  strcat(cmd, var);
+  strcat(cmd, "ms"); 
+  _write(ud, cmd); 
+  return 0; 
+}
+
+int pulseLEVEL(int ud, char* var1, char* var2){ 
+
+  char cmd[32]; 
+  // Low Level
+  strcpy(cmd, "LOL ");
+  strcat(cmd, var1);
+  strcat(cmd, "V"); 
+  _write(ud, cmd);
+
+  // High Level
+  strcpy(cmd, "HIL ");
+  strcat(cmd, var2);
+  strcat(cmd, "V"); 
+  _write(ud, cmd);
+  return 0; 
+}
+
+

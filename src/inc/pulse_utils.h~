@@ -1,0 +1,5 @@
+int pulseOFF(int ud); 
+int pulseON(int ud); 
+int pulseWidth(int ud, char* var); 
+int pulsePeriod(int ud, char* var);
+int pulseLevel(int ud, char* var1, char* var2);

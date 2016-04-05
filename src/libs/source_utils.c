@@ -1,0 +1,44 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "gpib/ib.h"
+#include "gpib_io.h"
+#include "source_utils.h"
+
+/*** SOURCE 66XX Controls ***/
+int sourceDefaults(int ud){
+  _write(ud, "VSET 1,0"); 
+  _write(ud, "OUT 1,0"); 
+  _write(ud, "VSET 2,0"); 
+  _write(ud, "OUT 2,0"); 
+}
+
+int sourceBias(int ud, char *var){ 
+  char cmd[32]; 
+  _write(ud, "VSET 1,0"); 
+  strcpy(cmd, "VSET 2,");
+  strcat(cmd, var);
+  _write(ud, cmd); 
+  return 0; 
+}
+
+int sourceComp(int ud, char *var){ 
+  char cmd[32]; 
+  _write(ud, "VSET 1,0"); 
+  strcpy(cmd, "VSET 2,");
+  strcat(cmd, var);
+  _write(ud, cmd); 
+  return 0; 
+}
+
+int sourceON(int ud){
+  _write(ud, "OUT 1,1"); 
+  _write(ud, "OUT 2,1"); 
+  return 0; 
+}
+
+int sourceOFF(int ud){
+  _write(ud, "OUT 1,0"); 
+  _write(ud, "OUT 2,0"); 
+  return 0; 
+}
