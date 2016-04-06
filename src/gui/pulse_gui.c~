@@ -1,22 +1,18 @@
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <gtk/gtk.h>
 #include <cairo.h>
-
 #include "gpib_io.h"
+
 #include "source_utils.h"
 #include "pulse_utils.h"
 #include "scope_utils.h"
+
 #include "linkedlist.h"
 #include "stringutils.h"
 
-// GPIB BUFFER SIZE 32kb
-#define SHELL "/bin/bash" 
+// GPIB BUFFER SIZE 32kb 
 #define BUFFERSIZE 16000
 
 // GUI Window SIZE
@@ -113,6 +109,7 @@ typedef struct{
   GtkWidget *setGRID;
   point_t   *grid;
 
+
   ////////////////////////
   //     SET PARAMS     //
   ////////////////////////
@@ -132,6 +129,8 @@ typedef struct{
   // Save Data widgets  //
   ////////////////////////
   GtkWidget **chSELECT;
+
+  char* listSTR;
   GtkWidget *saveWINDOW;
   GtkWidget *saveBUTTON;
   GtkWidget *saveENTRY;
@@ -140,13 +139,6 @@ typedef struct{
   GtkWidget *saveLABEL;
   char* filename;
   int increment; 
-
-  ////////////////////////
-  // Plot Data widgets  //
-  ////////////////////////
-  GtkWidget *plotBUTTON;
-  char* p_filename;
-
 
 }GTKwrapper;
 
@@ -275,15 +267,11 @@ static void MEASURE(GtkWidget *measBUTTON, GTKwrapper* state)
 
   // First Dialog
   if (PULSEMODE) {
-    char* _vg = (char*)malloc(8*sizeof(char)); 
-    char* _vd = (char*)malloc(8*sizeof(char)); 
+    char _vg[8];
+    char _vd[8];
     while (current != NULL) {
-      // Divide vg by 2 for 1M gate imput
-      float vg = (current->vg)/2.0;
-      float vd = (current->vd);
-
-      sprintf(_vg, "%.2f", vg);
-      sprintf(_vd, "%.2f", vd);
+      sprintf(_vg, "%.2f", current->vg);
+      sprintf(_vd, "%.2f", current->vd);
       scopeRUN(state->GPIB->a_scope);
       sourceON(state->GPIB->a_source); 
       if ( current->vg < 0.0 )  {
@@ -370,33 +358,23 @@ static void RESETSCOPE(GtkWidget *BUTTON, GTKwrapper* state){
 static void PULSETEST(GtkWidget *BUTTON, GTKwrapper* state){ 
 
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(state->TEST[2]))){
-
-    float vg = atof( (char*)gtk_entry_get_text((GtkEntry*)state->TEST[0]) );
-    float vd = atof( (char*)gtk_entry_get_text((GtkEntry*)state->TEST[1]) );
-    vg = vg/2.0;
-
-    char* _vg = (char*)malloc(8*sizeof(char)); 
-    char* _vd = (char*)malloc(8*sizeof(char)); 
-    sprintf(_vg, "%.2f", vg);
-    sprintf(_vd, "%.2f", vd);
-
-    if (vg  > 0.0){
-      pulseLevel(state->GPIB->a_pulse, "0.0", _vg);
-      sourceBias(state->GPIB->a_source, _vd);
+    if (atof((char*)gtk_entry_get_text((GtkEntry*)state->TEST[0]))  > 0.0){
+      pulseLevel(state->GPIB->a_pulse, "0.0", (char*)gtk_entry_get_text((GtkEntry*)state->TEST[0]));
+      sourceBias(state->GPIB->a_source, (char*)gtk_entry_get_text((GtkEntry*)state->TEST[1]));
       pulsePOS(state->GPIB->a_pulse);
       pulseON(state->GPIB->a_pulse);
       sourceON(state->GPIB->a_source); 
     }
-    else if (vg == 0.0){
+    else if (atof((char*)gtk_entry_get_text((GtkEntry*)state->TEST[0])) == 0.0){
       pulseLevel(state->GPIB->a_pulse,  "0.0", "0.001");
-      sourceBias(state->GPIB->a_source, _vd);
+      sourceBias(state->GPIB->a_source, (char*)gtk_entry_get_text((GtkEntry*)state->TEST[1]));
       pulsePOS(state->GPIB->a_pulse);
       pulseON(state->GPIB->a_pulse);
       sourceON(state->GPIB->a_source); 
     }
     else{
-      pulseLevel(state->GPIB->a_pulse, _vg, "0.0");
-      sourceBias(state->GPIB->a_source, _vd);
+      pulseLevel(state->GPIB->a_pulse, (char*)gtk_entry_get_text((GtkEntry*)state->TEST[0]), "0.0");
+      sourceBias(state->GPIB->a_source,(char*)gtk_entry_get_text((GtkEntry*)state->TEST[1]));
       pulseNEG(state->GPIB->a_pulse);
       pulseON(state->GPIB->a_pulse);
       sourceON(state->GPIB->a_source); 
@@ -707,61 +685,39 @@ static void savedata(char* filename, GTKwrapper* state){
 
   char header[256];
   char buffer[256];
+  char tmp[BUFFERSIZE];
 
-  while (current != NULL){
+  while (current->next != NULL){
     sprintf(header, "## %f %f \n", current->vg,  current->vd);
     fprintf(file, header);
-    sprintf(header, "## CH1\t\tCH2\t\tCH3\t\tCH4\n");
+    sprintf(header, "** CH1\t\tCH2\t\tCH3\t\tCH4\n");
     fprintf(file, header);
-
+   
     char *a1[1000];
-    char tmp1[BUFFERSIZE];
-    strcpy(tmp1, current->c1);
-    tokenize(a1, tmp1); 
-  
+    strcpy(tmp, current->c1);
+    tokenize(a1, tmp); 
+    
     char *a2[1000];
-    char tmp2[BUFFERSIZE];
-    strcpy(tmp2, current->c2);
-    tokenize(a2, tmp2); 
-      
+    strcpy(tmp, current->c2);
+    tokenize(a2, tmp); 
+    
     char *a3[1000];
-    char tmp3[BUFFERSIZE];
-    strcpy(tmp3, current->c3);
-    tokenize(a3, tmp3); 
-      
+    strcpy(tmp, current->c3);
+    tokenize(a3, tmp); 
+    
     char *a4[1000];
-    char tmp4[BUFFERSIZE];
-    strcpy(tmp4, current->c4);
-    tokenize(a4, tmp4); 
-      
+    strcpy(tmp, current->c4);
+    tokenize(a4, tmp); 
+    
     for (i=1; i<999; i++){
       fprintf(file, "%s\t\t%s\t\t%s\t\t%s\n", a1[i], a2[i],a3[i],a4[i]);
     }
-    fprintf(file, "##\n");
     current = current->next;
   }
   fclose(file);
 }
 
-static void PLOTDATA(char* filename){
-  
-  char cwd[1024];
-  char command[1024];
-  if (getcwd(cwd, sizeof(cwd)) != NULL){
-    strcat(cwd, "/python/plot/plotPulse.py ");
-    strcat(cwd, filename);
 
-    int status;
-    pid_t pid;
-    pid = fork ();
-    if (pid == 0){
-      strcpy(command, "python ");
-      strcat(command, cwd);
-      execl (SHELL, SHELL, "-c", command, NULL);
-      _exit (EXIT_FAILURE);
-    }
-  }
-}
 static void SAVEDATA(GtkWidget* saveBUTTON, GTKwrapper* state){
 
   if (!strcmp(state->filename,"")){
@@ -770,9 +726,6 @@ static void SAVEDATA(GtkWidget* saveBUTTON, GTKwrapper* state){
   }
   int INC = (int)gtk_switch_get_active ((GtkSwitch*)state->saveINC);
   if (INC) {
-    while (gtk_events_pending())
-      gtk_main_iteration();
-
     // Append the incrementor to the filename
     // e.g. you will get <path.dat.0> etc. We 
     // need some string manipulation for this. 
@@ -792,15 +745,11 @@ static void SAVEDATA(GtkWidget* saveBUTTON, GTKwrapper* state){
     gtk_entry_set_text(GTK_ENTRY(state->saveENTRY), tmpPath);
     state->increment++;
     savedata(tmpPath, state);
-    PLOTDATA(tmpPath);
   }
   else {
-    while (gtk_events_pending())
-      gtk_main_iteration();
     // if the incrementor is deselected then reset.
     state->increment = 0;
     savedata(state->filename, state);
-    PLOTDATA(state->filename);
   }
 }
 
@@ -837,41 +786,6 @@ static void save_INIT(GTKwrapper *state)
   gtk_fixed_put(GTK_FIXED(state->fixed), state->saveDATA, X6, Y6);
   gtk_widget_set_size_request(state->saveDATA, BWIDTH, BHEIGHT);
 }
-
-static void PLOTPATH(GtkWidget* plotBUTTON, GTKwrapper* state){
-
-  GtkWidget *chooser;
-  chooser = gtk_file_chooser_dialog_new ("Open File...",
-					 (GtkWindow*)state->window,
-					 GTK_FILE_CHOOSER_ACTION_SAVE,
-					 (gchar*)"_Cancel", 
-					 GTK_RESPONSE_CANCEL,
-					 (gchar*)"_Open", 
-					 GTK_RESPONSE_OK,
-					 NULL);
-	
-  if (gtk_dialog_run (GTK_DIALOG (chooser)) == GTK_RESPONSE_OK)
-  {
-      state->p_filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (chooser));
-      gtk_widget_destroy (chooser);
-      while (gtk_events_pending())
-	gtk_main_iteration();
-      PLOTDATA(state->p_filename);
-  }
-  else{
-    gtk_widget_destroy (chooser);
-    return;
-  }
-}
-
-static void plot_INIT(GTKwrapper *state){
-  /* set SMU control */
-  state->plotBUTTON = gtk_button_new_with_label("pyPlot Pulses");
-  g_signal_connect(state->plotBUTTON,"clicked", G_CALLBACK(PLOTPATH), state);
-  gtk_fixed_put(GTK_FIXED(state->fixed), state->plotBUTTON, X6, Y5);
-  gtk_widget_set_size_request(state->plotBUTTON, BWIDTH, BHEIGHT);
-}
-
 /////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -908,7 +822,6 @@ static void destroyPULSE(GTKwrapper* state){
     gtk_widget_destroy(state->saveLABEL); 
     gtk_widget_destroy(state->saveENTRY); 
     gtk_widget_destroy(state->saveBUTTON);
-    gtk_widget_destroy(state->plotBUTTON);
   }
 }
 
@@ -942,7 +855,6 @@ static void generatePULSE(GSimpleAction *action, GVariant*parameter,  void* gui_
     grid_INIT(_state);
     test_INIT(_state);
     save_INIT(_state);
-    plot_INIT(_state);
   }
   gtk_widget_show_all(GTK_WIDGET(_state->window)); 
 }
@@ -1026,7 +938,7 @@ static void activate (GtkApplication *app, GTKwrapper* state)
   gtk_container_add(GTK_CONTAINER(state->window), state->fixed);
 
   g_signal_connect(G_OBJECT(state->window), "draw", G_CALLBACK(draw_cb), NULL);
-  generateMODELABEL(state,"Pulsemaster v1.01");
+  generateMODELABEL(state,"Pulsemaster v1.00");
   gpib_INIT(state);
   state->MODE=2;
   gtk_widget_show_all (GTK_WIDGET(state->window));
@@ -1039,7 +951,7 @@ int main (int argc, char **argv)
 {
   GTKwrapper* state = (GTKwrapper*)malloc(sizeof(GTKwrapper));
   state->filename   = malloc(100);
-  state->p_filename = malloc(100);
+  state->listSTR    = malloc(100);
   state->increment  = 0;
   state->MODE       = 0;
 

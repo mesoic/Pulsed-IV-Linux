@@ -23,10 +23,10 @@ int scopeDefaults(int ud){
 
   _write(ud, "CHAN1:SCAL 2");
   _write(ud, "CHAN2:SCAL 2");
-  _write(ud, "CHAN3:SCAL 0.2");
+  _write(ud, "CHAN3:SCAL 0.02");
   _write(ud, "CHAN4:SCAL 0.02");
 
-  _write(ud, "CHAN1:IMP FIFT");
+  _write(ud, "CHAN1:IMP ONEM");
   _write(ud, "CHAN2:IMP ONEM");
   _write(ud, "CHAN3:IMP FIFT");
   _write(ud, "CHAN4:IMP FIFT");
